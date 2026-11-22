@@ -1,6 +1,4 @@
 // T3 ingest retains events and forwards to PostHog; UUIDs deduplicate retries there.
-// This build is opt-in: nothing is recorded, buffered or sent until the user turns on the
-// `telemetryEnabled` setting. While it is off, this service makes no network request at all.
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import type { ClientOs } from "@t3tools/contracts";
 import * as Clock from "effect/Clock";
@@ -374,4 +372,13 @@ export const make = Effect.gen(function* () {
   return AnalyticsService.of({ record, flush, recordOwners });
 });
 
-export const layer = Layer.effect(AnalyticsService, make);
+// This fork never sends product analytics. `make` is upstream's sender, kept so upstream merges
+// apply cleanly; only its tests build it.
+export const layer = Layer.succeed(
+  AnalyticsService,
+  AnalyticsService.of({
+    record: Effect.fn("AnalyticsService.record")(() => Effect.void),
+    flush: Effect.void,
+    recordOwners: Effect.fn("AnalyticsService.recordOwners")(() => Effect.void),
+  }),
+);

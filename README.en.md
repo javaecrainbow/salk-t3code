@@ -135,11 +135,8 @@ Only source-verified differences are listed below:
 - Update checks never send conversations, accounts, or project data.
 
 ### Usage Counting & Privacy
-- **Stardust active-user count (v1.2.1+, on by default)**: so the author knows how many people use it, the app sends at most once a day a random install ID, the Stardust version, and the OS and CPU type to `xiaoxin666.cn/api/stardust`. No conversations, accounts, projects or file paths. The site endpoint never reads or forwards your IP; the server stores only a re-hash of the install ID, deduplicated per day and deleted after 90 days.
-- The first launch of the new version shows a notice with a **Turn off** button; you can switch it any time under **Settings → About → "Count me as an active Stardust user"**. Off means nothing is sent.
-- [xiaoxin666.cn/stardust](https://www.xiaoxin666.cn/stardust) publishes a single number: devices active in the last 7 days.
-- Upstream T3 Code's built-in anonymous usage analytics are **off by default** in Stardust; while off, nothing is recorded, buffered, or sent.
-- To help upstream, you can opt in under **Settings → About → "Share anonymous usage data"**: it sends feature use, app version, and OS (no prompts, files, or paths) to the upstream project's `ingest.t3.codes`. Turning it off stops sending at once and discards unsent events.
+- This source tree no longer contains the Stardust daily active-user count (previously on by default, sent to `xiaoxin666.cn/api/stardust`); nothing is sent. The prebuilt v1.2.1 download under Download & Install below still includes it.
+- Upstream T3 Code's built-in anonymous usage analytics (`ingest.t3.codes`) are fully disabled: the server wires a no-op, so nothing is recorded, buffered, or sent, and there is no setting to turn them on.
 
 ---
 

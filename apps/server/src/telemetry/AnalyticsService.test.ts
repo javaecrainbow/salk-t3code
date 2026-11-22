@@ -118,12 +118,16 @@ const recordTwentyEvents = Effect.gen(function* () {
 type SettingsOverrides = Parameters<typeof ServerSettings.ServerSettingsService.layerTest>[0];
 const OPTED_IN: SettingsOverrides = { telemetryEnabled: true };
 
+// The server wires the no-op `AnalyticsService.layer`; most tests here cover upstream's sender.
+const layerSending = Layer.effect(AnalyticsService.AnalyticsService, AnalyticsService.make);
+
 const analyticsLayerWith = (
   client: HttpClient.HttpClient,
   policy?: ManagedPolicyDocument,
   settings: SettingsOverrides = OPTED_IN,
+  analytics = layerSending,
 ) =>
-  AnalyticsService.layer.pipe(
+  analytics.pipe(
     Layer.provideMerge(
       Layer.mergeAll(
         ServerConfig.ServerConfig.layerTest(process.cwd(), { prefix: "t3-telemetry-retry-" }),
@@ -166,6 +170,7 @@ const sendFor = (
   > = recordTwentyEvents,
   policy?: ManagedPolicyDocument,
   settings: SettingsOverrides = OPTED_IN,
+  analytics = layerSending,
 ) =>
   Effect.gen(function* () {
     const batches: Array<ReadonlyArray<SentEvent>> = [];
@@ -180,7 +185,7 @@ const sendFor = (
         return yield* respond(request);
       }),
     );
-    const runtimeLayer = analyticsLayerWith(client, policy, settings);
+    const runtimeLayer = analyticsLayerWith(client, policy, settings, analytics);
 
     yield* Effect.gen(function* () {
       yield* record;
@@ -314,7 +319,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("AnalyticsService
         prefix: "t3-telemetry-base-",
       });
 
-      const layerTelemetry = AnalyticsService.layer.pipe(
+      const layerTelemetry = layerSending.pipe(
         Layer.provideMerge(layerServerConfig),
         Layer.provide(ServerSettings.ServerSettingsService.layerTest(OPTED_IN)),
       );
@@ -439,6 +444,30 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("AnalyticsService
     }),
   );
 
+  it.effect("the layer the server wires sends nothing, even opted in with every switch on", () =>
+    Effect.gen(function* () {
+      let requests = 0;
+      const batches = yield* sendFor(
+        15,
+        (request) => {
+          requests += 1;
+          return respondWithStatus(204)(request);
+        },
+        Effect.gen(function* () {
+          const analytics = yield* AnalyticsService.AnalyticsService;
+          yield* recordTwentyEvents;
+          yield* analytics.recordOwners([{ source: "connect", ownerId: "c".repeat(64) }], "server");
+          yield* analytics.flush;
+        }),
+        undefined,
+        OPTED_IN,
+        AnalyticsService.layer,
+      );
+      assert.equal(requests, 0);
+      assert.deepEqual(batches, []);
+    }),
+  );
+
   it.effect(
     "drops events queued before an opt-out and sends only what is recorded while opted in",
     () =>
@@ -483,7 +512,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("AnalyticsService
       const layerServerConfig = ServerConfig.ServerConfig.layerTest(process.cwd(), {
         prefix: "t3-telemetry-disabled-",
       });
-      const layerTelemetry = AnalyticsService.layer.pipe(
+      const layerTelemetry = layerSending.pipe(
         Layer.provideMerge(layerServerConfig),
         Layer.provide(ServerSettings.ServerSettingsService.layerTest(OPTED_IN)),
       );

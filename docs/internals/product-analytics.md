@@ -134,9 +134,8 @@ repeating the call's outcome and duration, so event counts are not call counts.
 
 ## Delivery
 
-`AnalyticsService` is opt-in in this fork: it reads the `telemetryEnabled` server setting (default
-`false`) before it records or sends anything, and re-reads it at every send, so an opt-out drops
-queued events. `T3CODE_TELEMETRY_ENABLED=false` and a managed policy can only switch it off.
+In this fork `AnalyticsService.layer` is a no-op, so nothing in this section runs. `make` is
+upstream's sender, kept so upstream merges apply cleanly; only its tests build it.
 
 The server sends batches to the ingest endpoint at `ingest.t3.codes`, which archives
 every event and forwards some of them to PostHog. A send can fail after the endpoint

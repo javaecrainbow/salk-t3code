@@ -12,7 +12,6 @@ import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
 import { toastManager } from "../ui/toast";
 import { SettingsRow } from "./settingsLayout";
-import { StardustStatsRow } from "./StardustStats";
 import { openDesktopUpdateReleaseNotes } from "../desktopUpdate.toast";
 const openPage = (url: string) => {
   void openDesktopUpdateReleaseNotes(window.desktopBridge, url);
@@ -99,7 +98,6 @@ export function CommunityUpdateSettings() {
           />
         }
       />
-      <StardustStatsRow />
       <SettingsRow
         title={uiText("Stardust Community · Mac Apple Silicon")}
         description={

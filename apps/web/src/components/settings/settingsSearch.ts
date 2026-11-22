@@ -1030,13 +1030,6 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: [msg("onboarding setup first run getting started agents import projects")],
   },
   {
-    id: "telemetry-opt-in",
-    title: "Share anonymous usage data",
-    to: "/settings/about",
-    scope: "environment",
-    searchTerms: ["telemetry analytics usage statistics tracking privacy opt in off default"],
-  },
-  {
     id: "privacy-policy",
     title: msg("Privacy policy"),
     to: "/settings/about",
@@ -1670,7 +1663,7 @@ export function isSettingsSearchScopeAvailable(
       );
   }
 }
-export function searchableSetting(id: SettingsSearchItemId): {
+function searchableSetting(id: SettingsSearchItemId): {
   readonly id: string;
   readonly title: string;
 } {

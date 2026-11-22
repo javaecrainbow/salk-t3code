@@ -9320,9 +9320,6 @@ export const zhCN: Readonly<Record<string, string>> = {
   "{count} more step": "另外 {count} 步",
   "{count} more steps": "另外 {count} 步",
   "No result": "无结果",
-  "Share anonymous usage data": "共享匿名使用数据",
-  "Off by default. When on, anonymous usage events (feature use, app version, operating system; no prompts, files or paths) are sent to ingest.t3.codes, a server run by the upstream T3 Code project. Turning it off stops sending at once and discards events not yet sent.":
-    "默认关闭。开启后，匿名使用事件（功能使用情况、应用版本、操作系统；不含提示词、文件或路径）会发送到 ingest.t3.codes，该服务由上游 T3 Code 项目运营。关闭后立即停止发送，并丢弃尚未发送的事件。",
   "What this build sends and where. Usage statistics stay off unless you turn them on above.":
     "本版本会发送什么、发往哪里。除非你在上方开启，否则不会发送使用统计。",
   "Usage statistics are off by default. You can turn them on in Settings › About.":
@@ -9657,12 +9654,5 @@ export const zhCN: Readonly<Record<string, string>> = {
   "Fast & Low-cost": "极速低价",
   "Low-cost": "低价",
   "T3 Stardust {tag} is available": "T3 星尘版 {tag} 已发布",
-  "T3 Stardust counts active users anonymously": "T3 星尘版会匿名统计活跃人数",
-  "Once a day it sends a random install ID, the app version and your system type. No chats, accounts, projects or IP addresses are stored. You can turn it off any time in Settings → About.":
-    "每天发送一次随机安装 ID、应用版本和系统类型，不保存聊天、账号、项目或 IP 地址。可以随时在「设置 → 关于」里关闭。",
-  "Turn off": "关闭统计",
-  "Count me as an active Stardust user": "计入星尘版活跃用户",
-  "On by default. Once a day sends a random install ID, the app version and your system type to xiaoxin666.cn so the author knows how many people use T3 Stardust. No chats, accounts, projects or IP addresses are stored.":
-    "默认开启。每天向 xiaoxin666.cn 发送一次随机安装 ID、应用版本和系统类型，让作者知道有多少人在用 T3 星尘版。不保存聊天、账号、项目或 IP 地址。",
   "{version} available · {action}": "发现 {version}；{action}",
 };

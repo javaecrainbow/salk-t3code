@@ -24,6 +24,7 @@ import {
 } from "../../navigationHistory";
 import { primaryServerKeybindingsAtom } from "../../state/server";
 import { cn } from "../../lib/utils";
+import { PRODUCT_NAME } from "../../branding.logic";
 import { useIssuesSupported, usePullRequestsSupported } from "../../state/environments";
 
 import {
@@ -190,8 +191,6 @@ function SidebarBrand({ onBackdrop }: { onBackdrop: boolean }) {
     </Link>
   );
 }
-/** The English product wordmark; it is a name, not copy, so it is never translated. */
-const STARDUST_WORDMARK = "T3 Stardust";
 function SidebarBrandMark({ onBackdrop }: { onBackdrop: boolean }) {
   return (
     <span
@@ -199,7 +198,7 @@ function SidebarBrandMark({ onBackdrop }: { onBackdrop: boolean }) {
       data-on-backdrop={onBackdrop || undefined}
       className="truncate text-sm font-bold tracking-tight [text-box:trim-both_cap_alphabetic] supports-[text-box:trim-both_cap_alphabetic]:py-1"
     >
-      {STARDUST_WORDMARK}
+      {PRODUCT_NAME}
     </span>
   );
 }

@@ -87,7 +87,7 @@ const collect = () => {
 };
 // Exact product/protocol/format names and model identifiers. Never whitelist status verbs or whole English sentences.
 const terms =
-  /\b(?:T3(?: Code)?|Stardust|Code|AI|API|SDK|CLI|MCP|ACP|HTTP|HTTPS|WebSocket|JSON|HTML|MD|TXT|PNG|SVG|PDF|CSV|OAuth|SSH|URL|URI|UUID|CPU|RAM|GB|MB|KB|GiB|MiB|B|K|M|USD|GMT|UTC|Finder|GitHub|Git|Codex|Claude|Grok|Gemini|Antigravity|Cursor|OpenAI|Anthropic|Google|Chrome|Chromium|Safari|Firefox|Edge|Obsidian|MacBook|Air|macOS|Windows|Linux|iOS|Android|ChatGPT|GPT|Pro|Max|Opus|Sonnet|Haiku|Argon|Flash|DeepSeek|Qwen|Ollama|Node|Electron|X|App|VS Code|VSCode|Zed|Warp|iTerm2|Terminal)\b/g;
+  /\b(?:T3(?: Code)?|Stardust|Taxis|Code|AI|API|SDK|CLI|MCP|ACP|HTTP|HTTPS|WebSocket|JSON|HTML|MD|TXT|PNG|SVG|PDF|CSV|OAuth|SSH|URL|URI|UUID|CPU|RAM|GB|MB|KB|GiB|MiB|B|K|M|USD|GMT|UTC|Finder|GitHub|Git|Codex|Claude|Grok|Gemini|Antigravity|Cursor|OpenAI|Anthropic|Google|Chrome|Chromium|Safari|Firefox|Edge|Obsidian|MacBook|Air|macOS|Windows|Linux|iOS|Android|ChatGPT|GPT|Pro|Max|Opus|Sonnet|Haiku|Argon|Flash|DeepSeek|Qwen|Ollama|Node|Electron|X|App|VS Code|VSCode|Zed|Warp|iTerm2|Terminal)\b/g;
 function unknown(row) {
   if (
     row.data ||

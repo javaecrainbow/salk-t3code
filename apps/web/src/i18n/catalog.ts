@@ -450,7 +450,6 @@ export const zhCN: Readonly<Record<string, string>> = {
     "根据本项目最近 12 个会话的用户消息统计",
   "Used {count} times": "使用过 {count} 次",
   "Use skill": "使用技能",
-  "T3 Stardust": "T3 星尘版",
   "Good morning": "上午好",
   "Good afternoon": "下午好",
   "Good evening": "晚上好",

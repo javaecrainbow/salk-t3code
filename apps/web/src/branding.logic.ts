@@ -1,5 +1,8 @@
 const NIGHTLY_SERVER_VERSION_PATTERN = /^[^-+]+-(?:nightly|preview)\.\d{8}\.\d+$/;
 
+/** The product name; it is a name, not copy, so it is never translated. */
+export const PRODUCT_NAME = "T3 Taxis";
+
 export function formatAppDisplayName(input: {
   readonly baseName: string;
   readonly stageLabel: string;

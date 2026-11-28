@@ -1,4 +1,5 @@
 import { useUiText } from "~/i18n/useUiText";
+import { PRODUCT_NAME } from "~/branding.logic";
 
 import { useTaskBoard } from "~/taskBoard";
 import { useVisibleThreadShells } from "~/state/entities";
@@ -374,7 +375,7 @@ export function DraftHeroHeadline({
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col items-center" data-stardust-heading>
-      <img src="/stardust-icon.png" alt={uiText("T3 Stardust")} className="mb-3 size-14" />
+      <img src="/stardust-icon.png" alt={PRODUCT_NAME} className="mb-3 size-14" />
       <h1 className="text-center text-2xl font-semibold tracking-tight">
         {hasResolvedProject && !isScratchDraft ? (
           <>

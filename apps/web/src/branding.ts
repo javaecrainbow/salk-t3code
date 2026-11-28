@@ -1,6 +1,6 @@
-import { uiText } from "./i18n";
 import type { DesktopAppBranding } from "@t3tools/contracts";
 import {
+  PRODUCT_NAME,
   formatAppDisplayName,
   resolveHostedAppChannelLabel,
   resolveReleaseStageLabel,
@@ -22,8 +22,7 @@ export const HOSTED_APP_CHANNEL =
   hostedAppChannel === "latest" || hostedAppChannel === "nightly" ? hostedAppChannel : null;
 export const HOSTED_APP_CHANNEL_LABEL = resolveHostedAppChannelLabel(HOSTED_APP_CHANNEL);
 export function appBaseName(): string {
-  const name = injectedDesktopAppBranding?.baseName;
-  return !name || name === uiText("T3 Stardust", undefined, "zh-CN") ? uiText("T3 Stardust") : name;
+  return injectedDesktopAppBranding?.baseName || PRODUCT_NAME;
 }
 // Set by the stable release build (VITE_RELEASE_CHANNEL=stable). Such a build hides the Nightly
 // stage even though it carries the upstream nightly version stamp.

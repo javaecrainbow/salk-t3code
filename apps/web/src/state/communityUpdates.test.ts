@@ -1,8 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import type { DesktopUpdateState } from "@t3tools/contracts";
 import {
+  communityInstallPhase,
   communityReleaseNumber,
   communityUpdateActions,
+  desktopCanSelfUpdate,
   parseCommunityRelease,
+  runCommunityUpdateAndRestart,
 } from "./communityUpdates.logic";
 const stardustRelease = (version = "1.0.1") => ({
   tag_name: `v${version}`,
@@ -55,9 +59,9 @@ describe("community release boundaries", () => {
     expect(communityReleaseNumber("xiaoxin-c48-windows-20261112")).toBeNull();
   });
   it("ignores arbitrary response URLs and builds repository-bound links", () => {
-    const r = parseCommunityRelease(stardustRelease("1.2.2"));
-    expect(r.url).toBe("https://github.com/zds-xiaoxin/xiaoxin-t3code/releases/tag/v1.2.2");
-    expect(r.compareUrl).toContain("compare/v1.2.1...v1.2.2");
+    const r = parseCommunityRelease(stardustRelease("1.2.4"));
+    expect(r.url).toBe("https://github.com/zds-xiaoxin/xiaoxin-t3code/releases/tag/v1.2.4");
+    expect(r.compareUrl).toContain("compare/v1.2.3...v1.2.4");
     const legacy = parseCommunityRelease(release());
     expect(legacy.url).toBe(
       "https://github.com/zds-xiaoxin/xiaoxin-t3code/releases/tag/xiaoxin-c48-macos-20261112",
@@ -71,20 +75,27 @@ describe("community release boundaries", () => {
   ])("rejects unpublished, preview or incomplete binaries", (r) =>
     expect(() => parseCommunityRelease(r)).toThrow(),
   );
+  it("accepts the published asset name, which keeps the tag's v", () => {
+    const published = stardustRelease("1.2.2");
+    published.assets[0]!.name = "T3-Stardust-v1.2.2-macOS-arm64.zip";
+    expect(parseCommunityRelease(published).tag).toBe("v1.2.2");
+  });
   it("custom mode exposes only source review and never installation", () => {
     expect(communityUpdateActions("custom")).toEqual({
       canOpenDownloadPage: false,
       canViewSourceDiff: true,
       canInstall: false,
     });
+    expect(communityUpdateActions("custom", true).canInstall).toBe(false);
     expect(communityUpdateActions("standard").canInstall).toBe(false);
+    expect(communityUpdateActions("standard", true).canInstall).toBe(true);
   });
 });
 describe("community checks", () => {
   it("defaults to standard mode, performs credential-free checks, and finds a newer release", async () => {
     const fetch = vi
       .fn()
-      .mockResolvedValue({ ok: true, json: async () => stardustRelease("1.2.2") });
+      .mockResolvedValue({ ok: true, json: async () => stardustRelease("1.2.4") });
     vi.stubGlobal("fetch", fetch);
     const { useCommunityUpdates: s } = await import("./communityUpdates");
     expect(s.getState().mode).toBe("standard");
@@ -165,5 +176,138 @@ describe("community checks", () => {
     vi.resetModules();
     const second = await import("./communityUpdates");
     expect(second.useCommunityUpdates.getState().mode).toBe("custom");
+  });
+});
+
+const desktopState = (patch: Partial<DesktopUpdateState> = {}): DesktopUpdateState => ({
+  enabled: true,
+  status: "idle",
+  channel: "latest",
+  currentVersion: "1.2.1",
+  hostArch: "arm64",
+  appArch: "arm64",
+  runningUnderArm64Translation: false,
+  availableVersion: null,
+  downloadedVersion: null,
+  releaseNotes: [],
+  omittedReleaseCount: 0,
+  downloadPercent: null,
+  checkedAt: null,
+  message: null,
+  errorContext: null,
+  canRetry: false,
+  ...patch,
+});
+
+function fakeBridge(initial: DesktopUpdateState, steps: { check?: DesktopUpdateState } = {}) {
+  let state = initial;
+  const listeners = new Set<(next: DesktopUpdateState) => void>();
+  const calls: string[] = [];
+  const publish = (next: DesktopUpdateState) => {
+    state = next;
+    for (const listener of listeners) listener(next);
+  };
+  const bridge = {
+    getUpdateState: vi.fn(async () => state),
+    checkForUpdate: vi.fn(async () => {
+      calls.push("check");
+      if (steps.check) state = steps.check;
+      return { checked: true, state };
+    }),
+    downloadUpdate: vi.fn(async () => {
+      calls.push("download");
+      const downloading = { ...state, status: "downloading" as const, downloadPercent: 10 };
+      state = downloading;
+      // Progress and completion arrive as state events after the call returns.
+      setTimeout(() => publish({ ...downloading, downloadPercent: 60 }), 0);
+      setTimeout(
+        () =>
+          publish({
+            ...downloading,
+            status: "downloaded",
+            downloadPercent: 100,
+            downloadedVersion: downloading.availableVersion,
+          }),
+        5,
+      );
+      return { accepted: true, completed: false, state: downloading };
+    }),
+    installUpdate: vi.fn(async (version?: string) => {
+      calls.push(`install ${version}`);
+      return { accepted: true, completed: false, state };
+    }),
+    onUpdateState: vi.fn((listener: (next: DesktopUpdateState) => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    }),
+  };
+  return { bridge, calls };
+}
+
+describe("one-click update and restart", () => {
+  it("only offers itself when the desktop runs the Stardust updater", () => {
+    expect(desktopCanSelfUpdate(null)).toBe(false);
+    expect(desktopCanSelfUpdate(desktopState({ enabled: false, status: "disabled" }))).toBe(false);
+    expect(desktopCanSelfUpdate(desktopState())).toBe(true);
+    expect(
+      communityInstallPhase(desktopState({ status: "available", availableVersion: "1.2.2" })),
+    ).toBe("ready");
+    expect(communityInstallPhase(desktopState({ status: "downloading" }))).toBe("downloading");
+    expect(
+      communityInstallPhase(desktopState({ status: "downloaded", downloadedVersion: "1.2.2" })),
+    ).toBe("downloaded");
+  });
+
+  it("checks, downloads, waits for verification and installs the new version", async () => {
+    const { bridge, calls } = fakeBridge(desktopState(), {
+      check: desktopState({ status: "available", availableVersion: "1.2.2" }),
+    });
+    await expect(runCommunityUpdateAndRestart(bridge)).resolves.toEqual({
+      ok: true,
+      version: "1.2.2",
+    });
+    expect(calls).toEqual(["check", "download", "install 1.2.2"]);
+  });
+
+  it("installs an already downloaded update without downloading again", async () => {
+    const { bridge, calls } = fakeBridge(
+      desktopState({ status: "downloaded", availableVersion: "1.2.2", downloadedVersion: "1.2.2" }),
+    );
+    await expect(runCommunityUpdateAndRestart(bridge)).resolves.toMatchObject({ ok: true });
+    expect(calls).toEqual(["install 1.2.2"]);
+  });
+
+  it("reports the updater's reason instead of installing", async () => {
+    const { bridge, calls } = fakeBridge(desktopState(), {
+      check: desktopState({
+        status: "error",
+        message: "GitHub is rate-limiting update checks. Try again later.",
+      }),
+    });
+    await expect(runCommunityUpdateAndRestart(bridge)).resolves.toEqual({
+      ok: false,
+      message: "GitHub is rate-limiting update checks. Try again later.",
+    });
+    expect(calls).toEqual(["check"]);
+
+    const disabled = fakeBridge(
+      desktopState({ enabled: false, status: "disabled", message: "off" }),
+    );
+    await expect(runCommunityUpdateAndRestart(disabled.bridge)).resolves.toEqual({
+      ok: false,
+      message: "off",
+    });
+    expect(disabled.calls).toEqual([]);
+  });
+});
+
+describe("automatic install preference", () => {
+  it("is off by default and persists once turned on", async () => {
+    const first = await import("./communityUpdates");
+    expect(first.useCommunityUpdates.getState().autoInstall).toBe(false);
+    first.useCommunityUpdates.getState().setAutoInstall(true);
+    vi.resetModules();
+    const second = await import("./communityUpdates");
+    expect(second.useCommunityUpdates.getState().autoInstall).toBe(true);
   });
 });

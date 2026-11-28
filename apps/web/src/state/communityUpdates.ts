@@ -15,6 +15,8 @@ type Preferences = {
   /** True once the user picks a mode; until then the default applies. */
   modeChosen: boolean;
   automatic: boolean;
+  /** Download new releases in the background and install them when the app quits. Off by default. */
+  autoInstall: boolean;
   lastAttempt: number;
   notifiedTag: string;
 };
@@ -23,6 +25,7 @@ function readPreferences(): Preferences {
     mode: "standard",
     modeChosen: false,
     automatic: true,
+    autoInstall: false,
     lastAttempt: 0,
     notifiedTag: "",
   };
@@ -35,6 +38,7 @@ function readPreferences(): Preferences {
       mode: v.modeChosen === true && v.mode === "custom" ? "custom" : "standard",
       modeChosen: v.modeChosen === true,
       automatic: typeof v.automatic === "boolean" ? v.automatic : defaults.automatic,
+      autoInstall: v.autoInstall === true,
       lastAttempt:
         typeof v.lastAttempt === "number" &&
         Number.isFinite(v.lastAttempt) &&
@@ -54,6 +58,7 @@ interface CommunityUpdatesState extends Preferences {
   error: string | null;
   setMode: (mode: CommunityUpdateMode) => void;
   setAutomatic: (automatic: boolean) => void;
+  setAutoInstall: (autoInstall: boolean) => void;
   markNotified: (tag: string) => void;
   check: (manual?: boolean) => Promise<void>;
 }
@@ -61,11 +66,11 @@ let pending: Promise<void> | null = null;
 export const useCommunityUpdates = create<CommunityUpdatesState>((set, get) => {
   const save = (patch: Partial<Preferences>) => {
     set(patch);
-    const { mode, modeChosen, automatic, lastAttempt, notifiedTag } = get();
+    const { mode, modeChosen, automatic, autoInstall, lastAttempt, notifiedTag } = get();
     try {
       localStorage.setItem(
         KEY,
-        JSON.stringify({ mode, modeChosen, automatic, lastAttempt, notifiedTag }),
+        JSON.stringify({ mode, modeChosen, automatic, autoInstall, lastAttempt, notifiedTag }),
       );
     } catch {
       set({
@@ -80,6 +85,7 @@ export const useCommunityUpdates = create<CommunityUpdatesState>((set, get) => {
     error: null,
     setMode: (mode) => save({ mode, modeChosen: true }),
     setAutomatic: (automatic) => save({ automatic }),
+    setAutoInstall: (autoInstall) => save({ autoInstall }),
     markNotified: (tag) => save({ notifiedTag: tag }),
     check: (manual = false) => {
       if (pending) return pending;

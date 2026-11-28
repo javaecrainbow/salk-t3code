@@ -20,12 +20,12 @@ it("keeps modified workbenches on source review and only offers downloads after 
       ? Promise.resolve(
           new Response(
             JSON.stringify({
-              tag_name: "v1.2.2",
+              tag_name: "v1.2.4",
               draft: false,
               prerelease: false,
               assets: [
                 {
-                  name: "T3-Stardust-1.2.2-macOS-arm64.zip",
+                  name: "T3-Stardust-1.2.4-macOS-arm64.zip",
                   state: "uploaded",
                   size: 100,
                   digest: `sha256:${"a".repeat(64)}`,

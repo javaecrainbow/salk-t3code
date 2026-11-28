@@ -1,7 +1,8 @@
+import type { DesktopBridge, DesktopUpdateState } from "@t3tools/contracts";
 import { uiText } from "../i18n";
 /** Community releases are independent of upstream Electron version numbers. */
 /** The community release this build ships as. Bump with every public release. */
-export const COMMUNITY_BASE_TAG = "v1.2.1";
+export const COMMUNITY_BASE_TAG = "v1.2.3";
 export const COMMUNITY_REPOSITORY = "zds-xiaoxin/xiaoxin-t3code";
 export const COMMUNITY_RELEASES_URL = `https://github.com/${COMMUNITY_REPOSITORY}/releases`;
 export const COMMUNITY_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -37,7 +38,12 @@ export function communityReleaseNumber(tag: string): number | null {
 }
 function expectedMacAssetNames(tag: string, number: number): ReadonlyArray<string> {
   const semver = /^v([1-9]\d*\.\d+\.\d+)$/.exec(tag);
-  if (semver) return [`T3-Stardust-${semver[1]}-macOS-arm64.zip`];
+  // Published assets keep the tag's "v" (T3-Stardust-v1.2.1-macOS-arm64.zip).
+  if (semver)
+    return [
+      `T3-Stardust-v${semver[1]}-macOS-arm64.zip`,
+      `T3-Stardust-${semver[1]}-macOS-arm64.zip`,
+    ];
   return [`Xiaoxin-T3-Code-C${number}-macOS-arm64.zip`];
 }
 export function parseCommunityRelease(value: unknown): CommunityRelease {
@@ -76,10 +82,102 @@ export function parseCommunityRelease(value: unknown): CommunityRelease {
     compareUrl: `https://github.com/${COMMUNITY_REPOSITORY}/compare/${COMMUNITY_BASE_TAG}...${tag}`,
   };
 }
-export function communityUpdateActions(mode: CommunityUpdateMode) {
+/**
+ * `canSelfUpdate`: the desktop app can install releases itself (T3 Stardust's macOS updater).
+ * Source mode never installs, since replacing the app can overwrite a customized fork.
+ */
+export function communityUpdateActions(mode: CommunityUpdateMode, canSelfUpdate = false) {
   return {
     canOpenDownloadPage: mode === "standard",
     canViewSourceDiff: mode === "custom",
-    canInstall: false as const,
+    canInstall: mode === "standard" && canSelfUpdate,
   };
+}
+
+/** True when the desktop shell runs its own updater, which Stardust builds only do on macOS. */
+export function desktopCanSelfUpdate(state: DesktopUpdateState | null): boolean {
+  return state !== null && state.enabled && state.status !== "disabled";
+}
+
+export type CommunityInstallPhase = "none" | "ready" | "downloading" | "downloaded";
+
+export function communityInstallPhase(state: DesktopUpdateState | null): CommunityInstallPhase {
+  if (!desktopCanSelfUpdate(state) || state === null) return "none";
+  if (state.status === "downloading") return "downloading";
+  if (state.downloadedVersion !== null) return "downloaded";
+  if (state.status === "available" || (state.status === "error" && state.availableVersion)) {
+    return "ready";
+  }
+  return "none";
+}
+
+/** The version a one-click update would install, if the desktop updater has found one. */
+export function communityOfferedVersion(state: DesktopUpdateState | null): string | null {
+  return state?.downloadedVersion ?? state?.availableVersion ?? null;
+}
+
+type CommunityUpdateBridge = Pick<
+  DesktopBridge,
+  "getUpdateState" | "checkForUpdate" | "downloadUpdate" | "installUpdate" | "onUpdateState"
+>;
+
+export type CommunityUpdateAndRestartResult =
+  | { readonly ok: true; readonly version: string }
+  | { readonly ok: false; readonly message: string | null };
+
+function waitWhileDownloading(
+  bridge: CommunityUpdateBridge,
+  current: DesktopUpdateState,
+): Promise<DesktopUpdateState> {
+  if (current.status !== "downloading") return Promise.resolve(current);
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (state: DesktopUpdateState) => {
+      if (settled || state.status === "downloading") return;
+      settled = true;
+      unsubscribe();
+      resolve(state);
+    };
+    const unsubscribe = bridge.onUpdateState(finish);
+    // The download can finish between the caller's read and the subscription.
+    void bridge.getUpdateState().then(finish, () => undefined);
+  });
+}
+
+const hasInstallableDownload = (state: DesktopUpdateState) =>
+  state.downloadedVersion !== null &&
+  (state.status === "downloaded" ||
+    (state.status === "error" &&
+      (state.errorContext === null || state.errorContext === "install")));
+
+/**
+ * One click: find, download and verify the release, then quit, swap the app and relaunch.
+ * Resolves after the desktop accepted the install (the app is quitting) or with why it could not.
+ */
+export async function runCommunityUpdateAndRestart(
+  bridge: CommunityUpdateBridge,
+): Promise<CommunityUpdateAndRestartResult> {
+  let state = await bridge.getUpdateState();
+  if (!desktopCanSelfUpdate(state)) return { ok: false, message: state.message };
+  if (
+    state.downloadedVersion === null &&
+    state.status !== "available" &&
+    state.status !== "downloading"
+  ) {
+    state = (await bridge.checkForUpdate()).state;
+  }
+  state = await waitWhileDownloading(bridge, state);
+  if (!hasInstallableDownload(state) && state.availableVersion !== null) {
+    state = (await bridge.downloadUpdate()).state;
+    state = await waitWhileDownloading(bridge, state);
+  }
+  if (!hasInstallableDownload(state) || state.downloadedVersion === null) {
+    return { ok: false, message: state.message };
+  }
+  const version = state.downloadedVersion;
+  const result = await bridge.installUpdate(version);
+  if (!result.accepted || result.state.status === "error") {
+    return { ok: false, message: result.state.message };
+  }
+  return { ok: true, version };
 }
